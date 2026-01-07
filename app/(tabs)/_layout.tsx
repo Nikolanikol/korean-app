@@ -1,33 +1,50 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Colors } from "@/constants";
+import { Tabs } from "expo-router";
+import { Text } from "react-native";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.gray[400],
+        tabBarStyle: {
+          backgroundColor: Colors.white,
+          borderTopWidth: 1,
+          borderTopColor: Colors.gray[200],
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Словари",
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📚</Text>,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="library"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "Библиотека",
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🌐</Text>,
+        }}
+      />
+      <Tabs.Screen
+        name="study"
+        options={{
+          title: "Изучение",
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🎯</Text>,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Профиль",
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
         }}
       />
     </Tabs>
