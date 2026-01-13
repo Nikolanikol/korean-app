@@ -1,23 +1,127 @@
+import { DailyGoalModal } from "@/components/modals/DailyGoalModal";
+import { GoogleAccountPicker } from "@/components/modals/GoogleAccountPicker";
+import { LanguageModal } from "@/components/modals/LanguageModal";
+import { ActivityBar } from "@/components/profile/ActivityBar";
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
+import { googleAccountToUser } from "@/mocks/auth.mock";
 import { useAuthStore } from "@/store/authStore";
+import { useProgressStore } from "@/store/progressStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import { useVocabularyStore } from "@/store/vocabularyStore";
 import { commonStyles } from "@/utils/commonStyles";
+import { useState } from "react";
 import {
+  Alert,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-
 export default function ProfileScreen() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, loginWithUser } = useAuthStore();
   const { vocabularies } = useVocabularyStore();
+  const { totalWordsLearned, currentStreak, longestStreak } =
+    useProgressStore();
+  const { settings } = useSettingsStore();
+  // Состояния для модалок
+  const [showDailyGoalModal, setShowDailyGoalModal] = useState(false);
+  const [showInterfaceLanguageModal, setShowInterfaceLanguageModal] =
+    useState(false);
+  const [showLearningLanguageModal, setShowLearningLanguageModal] =
+    useState(false);
+  const [showGooglePicker, setShowGooglePicker] = useState(false);
 
+  // Функция поделиться
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message:
+          "Привет! Я изучаю корейский язык с помощью этого приложения. Попробуй и ты! 🇰🇷",
+        // url: 'https://apps.apple.com/app/...' // когда будет в Store
+      });
+    } catch (error) {
+      console.error("Ошибка при попытке поделиться:", error);
+    }
+  };
+
+  // Функция оценить приложение
+  const handleRate = () => {
+    Alert.alert(
+      "Оцените приложение",
+      "Спасибо за поддержку! Это поможет нам стать лучше.",
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: "Оценить",
+          onPress: () => {
+            // В будущем здесь будет ссылка на App Store / Play Store
+            // const storeUrl = Platform.select({
+            //   ios: 'itms-apps://apps.apple.com/app/...',
+            //   android: 'market://details?id=...',
+            // });
+            // Linking.openURL(storeUrl);
+            Alert.alert("Спасибо!", "Скоро приложение появится в Store 🎉");
+          },
+        },
+      ]
+    );
+  };
+  // Функция авторизации через Google
+  const handleGoogleLogin = (account: any) => {
+    const newUser = googleAccountToUser(account);
+    loginWithUser(newUser);
+    setShowGooglePicker(false);
+  };
+  // Если не авторизован - показываем экран входа
   if (!user) {
     return (
-      <View style={[commonStyles.container, commonStyles.centered]}>
-        <Text style={styles.emptyText}>Вы не авторизованы</Text>
+      <View style={commonStyles.container}>
+        <View style={styles.loginContainer}>
+          <View style={styles.loginHeader}>
+            <Text style={styles.loginEmoji}>🇰🇷</Text>
+            <Text style={styles.loginTitle}>Korean Learning App</Text>
+            <Text style={styles.loginSubtitle}>
+              Войдите, чтобы синхронизировать прогресс между устройствами
+            </Text>
+          </View>
+
+          <View style={styles.loginFeatures}>
+            <View style={styles.feature}>
+              <Text style={styles.featureIcon}>☁️</Text>
+              <Text style={styles.featureText}>Облачное хранение</Text>
+            </View>
+            <View style={styles.feature}>
+              <Text style={styles.featureIcon}>📊</Text>
+              <Text style={styles.featureText}>Статистика прогресса</Text>
+            </View>
+            <View style={styles.feature}>
+              <Text style={styles.featureIcon}>🏆</Text>
+              <Text style={styles.featureText}>Достижения</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={() => setShowGooglePicker(true)}
+          >
+            <View style={styles.googleIcon}>
+              <Text style={styles.googleIconText}>G</Text>
+            </View>
+            <Text style={styles.googleButtonText}>Войти через Google</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.skipText}>
+            Можете продолжить без входа, но прогресс не сохранится
+          </Text>
+        </View>
+
+        <GoogleAccountPicker
+          visible={showGooglePicker}
+          onClose={() => setShowGooglePicker(false)}
+          onSelectAccount={handleGoogleLogin}
+        />
       </View>
     );
   }
@@ -40,11 +144,11 @@ export default function ProfileScreen() {
       <View style={styles.statsContainer}>
         <View style={styles.statsRow}>
           <View style={[styles.statCard, styles.statCardPrimary]}>
-            <Text style={styles.statValue}>{user.streakDays}</Text>
+            <Text style={styles.statValue}>{currentStreak}</Text>
             <Text style={styles.statLabel}>Дней подряд 🔥</Text>
           </View>
           <View style={[styles.statCard, styles.statCardSecondary]}>
-            <Text style={styles.statValue}>{user.totalWordsLearned}</Text>
+            <Text style={styles.statValue}>{totalWordsLearned}</Text>
             <Text style={styles.statLabel}>Слов изучено</Text>
           </View>
         </View>
@@ -59,6 +163,10 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Всего слов</Text>
           </View>
         </View>
+      </View>
+      {/* Activity Bar */}
+      <View style={styles.section}>
+        <ActivityBar />
       </View>
 
       {/* Subscription */}
@@ -92,27 +200,48 @@ export default function ProfileScreen() {
       {/* Learning Settings */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Настройки обучения</Text>
-
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowInterfaceLanguageModal(true)}
+        >
           <View>
             <Text style={styles.menuItemTitle}>Язык интерфейса</Text>
-            <Text style={styles.menuItemSubtitle}>Русский</Text>
+            <Text style={styles.menuItemSubtitle}>
+              {settings.interfaceLanguage === "ru"
+                ? "Русский"
+                : settings.interfaceLanguage === "en"
+                ? "English"
+                : "한국어"}
+            </Text>
           </View>
           <Text style={styles.menuItemArrow}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowLearningLanguageModal(true)}
+        >
           <View>
             <Text style={styles.menuItemTitle}>Изучаемый язык</Text>
-            <Text style={styles.menuItemSubtitle}>Корейский</Text>
+            <Text style={styles.menuItemSubtitle}>
+              {settings.learningLanguage === "ru"
+                ? "Русский"
+                : settings.learningLanguage === "en"
+                ? "English"
+                : "Корейский"}
+            </Text>
           </View>
           <Text style={styles.menuItemArrow}>›</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity
+          onPress={() => setShowDailyGoalModal(true)}
+          style={styles.menuItem}
+        >
           <View>
             <Text style={styles.menuItemTitle}>Ежедневная цель</Text>
-            <Text style={styles.menuItemSubtitle}>20 новых слов в день</Text>
+            <Text style={styles.menuItemSubtitle}>
+              {settings.dailyGoal} новых слов в день
+            </Text>
           </View>
           <Text style={styles.menuItemArrow}>›</Text>
         </TouchableOpacity>
@@ -120,18 +249,38 @@ export default function ProfileScreen() {
 
       {/* Actions */}
       <View style={styles.section}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
           <Text style={styles.actionButtonText}>Поделиться приложением</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleRate}>
           <Text style={styles.actionButtonText}>Оценить приложение</Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={logout} style={styles.logoutButton}>
           <Text style={styles.logoutButtonText}>Выйти из аккаунта</Text>
         </TouchableOpacity>
       </View>
+      {/* Модалки */}
+      <DailyGoalModal
+        visible={showDailyGoalModal}
+        onClose={() => setShowDailyGoalModal(false)}
+      />
+      <LanguageModal
+        visible={showInterfaceLanguageModal}
+        onClose={() => setShowInterfaceLanguageModal(false)}
+        type="interface"
+      />
+
+      <LanguageModal
+        visible={showLearningLanguageModal}
+        onClose={() => setShowLearningLanguageModal(false)}
+        type="learning"
+      />
+      <GoogleAccountPicker
+        visible={showGooglePicker}
+        onClose={() => setShowGooglePicker(false)}
+        onSelectAccount={handleGoogleLogin}
+      />
     </ScrollView>
   );
 }
@@ -299,5 +448,81 @@ const styles = StyleSheet.create({
   emptyText: {
     color: Colors.text.secondary,
     fontSize: Typography.fontSize.base,
+  },
+  loginContainer: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
+  },
+  loginHeader: {
+    alignItems: "center",
+    marginBottom: Spacing.xxxl,
+  },
+  loginEmoji: {
+    fontSize: 80,
+    marginBottom: Spacing.lg,
+  },
+  loginTitle: {
+    fontSize: Typography.fontSize["3xl"],
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.sm,
+  },
+  loginSubtitle: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.text.secondary,
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  loginFeatures: {
+    marginBottom: Spacing.xxxl,
+  },
+  feature: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  featureIcon: {
+    fontSize: 24,
+    marginRight: Spacing.md,
+  },
+  featureText: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.text.primary,
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: Colors.gray[300],
+    marginBottom: Spacing.md,
+  },
+  googleIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  googleIconText: {
+    color: Colors.white,
+    fontWeight: Typography.fontWeight.bold,
+    fontSize: Typography.fontSize.sm,
+  },
+  googleButtonText: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    color: Colors.text.primary,
+  },
+  skipText: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.text.tertiary,
+    textAlign: "center",
   },
 });

@@ -1,8 +1,8 @@
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
-import { mockVocabulariesWithWords } from "@/mocks/vocabularies.mock";
+import { useVocabularyStore } from "@/store/vocabularyStore";
 import { commonStyles } from "@/utils/commonStyles";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   StyleSheet,
@@ -15,7 +15,15 @@ export default function FlashcardsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const vocabulary = mockVocabulariesWithWords.find((v) => v.id === id);
+  const { selectedVocabulary, fetchVocabularyById } = useVocabularyStore();
+
+  useEffect(() => {
+    if (id) {
+      fetchVocabularyById(id);
+    }
+  }, [id]);
+
+  const vocabulary = selectedVocabulary;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [knowCount, setKnowCount] = useState(0);

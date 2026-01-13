@@ -27,6 +27,64 @@ export default function CreateVocabularyScreen() {
   const [isPublic, setIsPublic] = useState(false);
   const [tags, setTags] = useState("");
 
+  // Состояние для списка слов
+  const [words, setWords] = useState<
+    Array<{
+      korean: string;
+      translation: string;
+      romanization?: string;
+      exampleSentence?: string;
+      exampleTranslation?: string;
+    }>
+  >([]);
+
+  // Состояние для формы добавления слова
+  const [newWord, setNewWord] = useState({
+    korean: "",
+    translation: "",
+    romanization: "",
+    exampleSentence: "",
+    exampleTranslation: "",
+  });
+
+  // Функция для добавления слова в список
+  const handleAddWord = () => {
+    if (!newWord.korean.trim() || !newWord.translation.trim()) {
+      Alert.alert("Ошибка", "Корейское слово и перевод обязательны");
+      return;
+    }
+
+    // Добавляем слово в список
+    setWords([
+      ...words,
+      {
+        id: `word-${Date.now()}-${words.length}`, // ⬅️ Уникальный ID!
+        korean: newWord.korean.trim(),
+        translation: newWord.translation.trim(),
+        romanization: newWord.romanization.trim() || undefined,
+        exampleSentence: newWord.exampleSentence.trim() || undefined,
+        exampleTranslation: newWord.exampleTranslation.trim() || undefined,
+        tags: [],
+        partOfSpeech: "noun",
+      },
+    ]);
+
+    // Очищаем форму
+    setNewWord({
+      korean: "",
+      translation: "",
+      romanization: "",
+      exampleSentence: "",
+      exampleTranslation: "",
+    });
+
+    Alert.alert("Успех", "Слово добавлено!");
+  };
+
+  // Функция для удаления слова из списка
+  const handleRemoveWord = (index: number) => {
+    setWords(words.filter((_, i) => i !== index));
+  };
   const handleCreate = async () => {
     if (!title.trim()) {
       Alert.alert("Ошибка", "Название обязательно");
@@ -52,9 +110,10 @@ export default function CreateVocabularyScreen() {
           .filter(Boolean),
         isPublic,
         isOfficial: false,
-        wordCount: 0,
+        wordCount: words.length, // ⬅️ Реальное количество!
         forkCount: 0,
         studyCount: 0,
+        words: words, // ⬅️ ДОБАВИЛИ СЛОВА!
       });
 
       Alert.alert("Успех", "Словарь создан!", [
@@ -163,7 +222,80 @@ export default function CreateVocabularyScreen() {
             placeholderTextColor={Colors.gray[400]}
           />
         </View>
+        {/* Список добавленных слов */}
+        {words.length > 0 && (
+          <View style={styles.wordsList}>
+            <Text style={styles.wordsListTitle}>
+              ✅ Добавлено слов: {words.length}
+            </Text>
 
+            {words.map((word, index) => (
+              <View key={index} style={styles.wordItem}>
+                <View style={styles.wordContent}>
+                  <Text style={styles.wordKorean}>{word.korean}</Text>
+                  <Text style={styles.wordTranslation}>{word.translation}</Text>
+                  {word.romanization && (
+                    <Text style={styles.wordRomanization}>
+                      {word.romanization}
+                    </Text>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => handleRemoveWord(index)}
+                  style={styles.removeButton}
+                >
+                  <Text style={styles.removeButtonText}>🗑️</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+        {/* ========== СЕКЦИЯ ДОБАВЛЕНИЯ СЛОВ ========== */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📚 Слова ({words.length})</Text>
+
+          {/* Форма добавления слова */}
+          <View style={styles.wordForm}>
+            <Text style={styles.label}>Корейское слово *</Text>
+            <TextInput
+              style={styles.input}
+              value={newWord.korean}
+              onChangeText={(text) => setNewWord({ ...newWord, korean: text })}
+              placeholder="예: 안녕하세요"
+              placeholderTextColor={Colors.gray[400]}
+            />
+
+            <Text style={styles.label}>Перевод *</Text>
+            <TextInput
+              style={styles.input}
+              value={newWord.translation}
+              onChangeText={(text) =>
+                setNewWord({ ...newWord, translation: text })
+              }
+              placeholder="Здравствуйте"
+              placeholderTextColor={Colors.gray[400]}
+            />
+
+            <Text style={styles.label}>Романизация</Text>
+            <TextInput
+              style={styles.input}
+              value={newWord.romanization}
+              onChangeText={(text) =>
+                setNewWord({ ...newWord, romanization: text })
+              }
+              placeholder="annyeonghaseyo"
+              placeholderTextColor={Colors.gray[400]}
+            />
+
+            <TouchableOpacity
+              style={styles.addWordButton}
+              onPress={handleAddWord}
+            >
+              <Text style={styles.addWordButtonText}>+ Добавить слово</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         {/* Публичный доступ */}
         <TouchableOpacity
           onPress={() => setIsPublic(!isPublic)}
@@ -311,5 +443,88 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.semibold,
+  },
+  // Стили для секции добавления слов
+  section: {
+    marginBottom: Spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.md,
+  },
+  wordForm: {
+    backgroundColor: Colors.gray[50],
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  addWordButton: {
+    backgroundColor: Colors.secondary,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    alignItems: "center",
+    marginTop: Spacing.md,
+  },
+  addWordButtonText: {
+    color: Colors.white,
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  input: {
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.gray[300],
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    color: Colors.text.primary,
+    marginBottom: Spacing.md,
+  },
+  wordsList: {
+    marginTop: Spacing.md,
+  },
+  wordsListTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.md,
+  },
+  wordItem: {
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: Colors.gray[200],
+  },
+  wordContent: {
+    flex: 1,
+  },
+  wordKorean: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs,
+  },
+  wordTranslation: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.xs,
+  },
+  wordRomanization: {
+    fontSize: Typography.fontSize.sm,
+    color: Colors.gray[500],
+    fontStyle: "italic",
+  },
+  removeButton: {
+    padding: Spacing.sm,
+  },
+  removeButtonText: {
+    fontSize: 20,
   },
 });

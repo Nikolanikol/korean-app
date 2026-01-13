@@ -1,5 +1,7 @@
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
+import { useDevice } from "@/hooks/useResponsive";
 import { Vocabulary } from "@/types/vocabulary";
+import { FONT_SIZES, scale } from "@/utils/responsive";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface VocabularyCardProps {
@@ -8,6 +10,8 @@ interface VocabularyCardProps {
 }
 
 export function VocabularyCard({ vocabulary, onPress }: VocabularyCardProps) {
+  const device = useDevice();
+
   const getDifficultyStyle = (level?: string) => {
     switch (level) {
       case "beginner":
@@ -30,7 +34,20 @@ export function VocabularyCard({ vocabulary, onPress }: VocabularyCardProps) {
   const difficultyStyle = getDifficultyStyle(vocabulary.difficultyLevel);
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.card}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[
+        styles.card,
+        {
+          padding: device.isTablet
+            ? scale(20)
+            : device.isSmall
+            ? scale(12)
+            : scale(16),
+        },
+      ]}
+    >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
@@ -110,7 +127,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: Typography.fontSize.lg,
+    fontSize: FONT_SIZES.large,
     fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
   },
@@ -139,7 +156,7 @@ const styles = StyleSheet.create({
   description: {
     color: Colors.text.secondary,
     marginBottom: Spacing.md,
-    fontSize: Typography.fontSize.sm,
+    fontSize: FONT_SIZES.small,
   },
   tagsContainer: {
     flexDirection: "row",

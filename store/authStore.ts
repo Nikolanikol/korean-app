@@ -1,6 +1,7 @@
-import { create } from 'zustand';
 import { User } from '@/types/user';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 interface AuthStore {
   user: User | null;
   isAuthenticated: boolean;
@@ -10,9 +11,13 @@ interface AuthStore {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
+    loginWithUser: (user: User) => void;  // ⬅️ ДОБАВИЛИ
+
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set) => ({
   user: {
     id: 'user-1',
     email: 'test@example.com',
@@ -48,11 +53,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
     });
   },
 
-  logout: () => {
-    set({ user: null, isAuthenticated: false });
-  },
 
+      loginWithUser: (user) => {
+        set({ user });
+      },
   setUser: (user: User) => {
     set({ user, isAuthenticated: true });
   },
-}));
+    logout: () => set({ user: null }),
+  }),
+  {
+    name: 'auth-storage',
+    storage: createJSONStorage(() => AsyncStorage),
+  }
+),
+
+);
