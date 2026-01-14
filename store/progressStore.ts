@@ -19,6 +19,10 @@ interface ProgressStore {
   updateWordProgress: (wordId: string, vocabularyId: string, wasCorrect: boolean) => void;
   getWeekActivity: () => DailyActivity[];
   calculateStreak: () => void;
+  // ⬇️ НОВЫЕ ФУНКЦИИ ДЛЯ SRS
+  getDueWords: (vocabularyId?: string) => WordProgress[];
+  getNewWords: (vocabularyId: string, allWords: any[], limit: number) => any[];
+  calculateNextReview: (level: number, wasCorrect: boolean) => string;
 }
 
 export const useProgressStore = create<ProgressStore>()(
@@ -84,7 +88,7 @@ export const useProgressStore = create<ProgressStore>()(
               incorrectCount: wasCorrect ? word.incorrectCount : word.incorrectCount + 1,
               level: wasCorrect ? Math.min(word.level + 1, 5) : Math.max(word.level - 1, 0),
               lastReviewed: new Date().toISOString(),
-              nextReview: new Date(Date.now() + (wasCorrect ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000)).toISOString(),
+nextReview: get().calculateNextReview(wasCorrect ? Math.min(word.level + 1, 5) : Math.max(word.level - 1, 0), wasCorrect),
             };
             
             set({ wordProgress: updated });
@@ -100,7 +104,8 @@ export const useProgressStore = create<ProgressStore>()(
                   correctCount: wasCorrect ? 1 : 0,
                   incorrectCount: wasCorrect ? 0 : 1,
                   lastReviewed: new Date().toISOString(),
-                  nextReview: new Date(Date.now() + (wasCorrect ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000)).toISOString(),
+                  nextReview: get().calculateNextReview(wasCorrect ? 1 : 0, wasCorrect),
+
                 },
               ],
             });
@@ -192,6 +197,66 @@ export const useProgressStore = create<ProgressStore>()(
           longestStreak = Math.max(longestStreak, currentStreak);
           
           set({ currentStreak, longestStreak });
+        },
+           getDueWords: (vocabularyId?: string) => {
+          const { wordProgress } = get();
+          const now = new Date();
+          
+          let dueWords = wordProgress.filter(wp => 
+            new Date(wp.nextReview) <= now
+          );
+          
+          // Фильтр по словарю если указан
+          if (vocabularyId) {
+            dueWords = dueWords.filter(wp => wp.vocabularyId === vocabularyId);
+          }
+          
+          // Сортировка по приоритету (новые/забытые первыми)
+          return dueWords.sort((a, b) => {
+            // Сначала level 0-1 (забытые/новые)
+            if (a.level !== b.level) {
+              return a.level - b.level;
+            }
+            // Потом по дате следующего повторения
+            return new Date(a.nextReview).getTime() - new Date(b.nextReview).getTime();
+          });
+        },
+
+        getNewWords: (vocabularyId, allWords, limit) => {
+          const { wordProgress } = get();
+          
+          // Находим слова которые еще не в прогрессе
+          const studiedWordIds = new Set(
+            wordProgress
+              .filter(wp => wp.vocabularyId === vocabularyId)
+              .map(wp => wp.wordId)
+          );
+          
+          const newWords = allWords.filter(word => !studiedWordIds.has(word.id));
+          
+          return newWords.slice(0, limit);
+        },
+
+        calculateNextReview: (level, wasCorrect) => {
+          const now = new Date();
+          
+          if (!wasCorrect) {
+            // При ошибке - показать через 10 минут
+            return new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+          }
+          
+          // Интервалы для каждого уровня (в миллисекундах)
+          const intervals = {
+            0: 10 * 60 * 1000,        // 10 минут
+            1: 1 * 24 * 60 * 60 * 1000,    // 1 день
+            2: 3 * 24 * 60 * 60 * 1000,    // 3 дня
+            3: 7 * 24 * 60 * 60 * 1000,    // 7 дней
+            4: 14 * 24 * 60 * 60 * 1000,   // 14 дней
+            5: 30 * 24 * 60 * 60 * 1000,   // 30 дней
+          };
+          
+          const interval = intervals[level as keyof typeof intervals] || intervals[0];
+          return new Date(now.getTime() + interval).toISOString();
         },
       };
     },

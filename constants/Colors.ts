@@ -58,7 +58,11 @@ export const Colors = {
   // Красный
   red: {
     50: '#FEF2F2',
+    100: '#FEE2E2',
     200: '#FECACA',
+    300: '#FCA5A5',
+    400: '#F87171',
+    500: '#EF4444',
     600: '#DC2626',
   },
   orange: {

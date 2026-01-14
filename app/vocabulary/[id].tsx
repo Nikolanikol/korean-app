@@ -63,7 +63,13 @@ export default function VocabularyDetailScreen() {
       >
         <Text style={styles.studyButtonText}>🎯 Начать изучение</Text>
       </TouchableOpacity>
-
+      {/* Multiple Choice кнопка */}
+      <TouchableOpacity
+        style={[styles.studyButton, { backgroundColor: Colors.secondary }]}
+        onPress={() => router.push(`/exercise/multiple-choice/${id}`)}
+      >
+        <Text style={styles.studyButtonText}>📝 Multiple Choice</Text>
+      </TouchableOpacity>
       {/* Words List */}
       <FlatList
         data={selectedVocabulary.words}

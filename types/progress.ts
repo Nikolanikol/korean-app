@@ -18,6 +18,7 @@ export interface WordProgress {
   incorrectCount: number;
   lastReviewed: string; // ISO date
   nextReview: string; // ISO date
+  
 }
 
 // Статистика streak

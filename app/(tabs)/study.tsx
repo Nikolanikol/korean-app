@@ -156,9 +156,12 @@ export default function StudyScreen() {
             </TouchableOpacity>
 
             <View style={styles.secondaryActions}>
-              <TouchableOpacity style={styles.secondaryAction}>
-                <Text style={styles.secondaryActionEmoji}>🎲</Text>
-                <Text style={styles.secondaryActionText}>Случайные слова</Text>
+              <TouchableOpacity
+                style={styles.secondaryAction}
+                onPress={() => router.push("/exercise/multiple-choice/vocab-1")}
+              >
+                <Text style={styles.secondaryActionEmoji}>📝</Text>
+                <Text style={styles.secondaryActionText}>Multiple Choice</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.secondaryAction}>
