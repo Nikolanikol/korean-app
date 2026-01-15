@@ -1,11 +1,13 @@
 import { WordItem } from "@/components/vocabulary/WordItem";
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
+import { useAuthStore } from "@/store/authStore";
 import { useVocabularyStore } from "@/store/vocabularyStore";
 import { commonStyles } from "@/utils/commonStyles";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -16,8 +18,9 @@ import {
 export default function VocabularyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { selectedVocabulary, isLoading, fetchVocabularyById } =
+  const { selectedVocabulary, fetchVocabularyById, forkVocabulary, isLoading } =
     useVocabularyStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (id) {
@@ -40,6 +43,12 @@ export default function VocabularyDetailScreen() {
       </View>
     );
   }
+  // Временная отладка
+  console.log("DEBUG:", {
+    selectedVocabularyUserId: selectedVocabulary?.userId,
+    currentUserId: user?.id,
+    isEqual: selectedVocabulary?.userId === user?.id,
+  });
 
   return (
     <View style={commonStyles.container}>
@@ -55,21 +64,63 @@ export default function VocabularyDetailScreen() {
           </Text>
         )}
       </View>
+      {/* Кнопка Fork для публичных словарей */}
+      {selectedVocabulary &&
+        selectedVocabulary.isPublic &&
+        selectedVocabulary.userId !== user?.id && (
+          <TouchableOpacity
+            style={[styles.studyButton, { backgroundColor: Colors.green[600] }]}
+            onPress={async () => {
+              if (!user) {
+                Alert.alert(
+                  "Ошибка",
+                  "Войдите в систему чтобы добавить словарь"
+                );
+                return;
+              }
+              await forkVocabulary(id!, user.id);
+              Alert.alert(
+                "Успех! 🎉",
+                "Словарь добавлен в ваши словари. Что делаем дальше?",
+                [
+                  {
+                    text: "Остаться здесь",
+                    style: "cancel",
+                  },
+                  {
+                    text: "К моим словарям",
+                    onPress: () => router.push("/"),
+                  },
+                ]
+              );
+            }}
+            disabled={isLoading}
+          >
+            <Text style={styles.studyButtonText}>
+              {isLoading ? "⏳ Добавление..." : "📥 Добавить к себе"}
+            </Text>
+          </TouchableOpacity>
+        )}
 
-      {/* Study Button */}
-      <TouchableOpacity
-        style={styles.studyButton}
-        onPress={() => router.push(`/study/flashcards/${id}`)}
-      >
-        <Text style={styles.studyButtonText}>🎯 Начать изучение</Text>
-      </TouchableOpacity>
-      {/* Multiple Choice кнопка */}
-      <TouchableOpacity
-        style={[styles.studyButton, { backgroundColor: Colors.secondary }]}
-        onPress={() => router.push(`/exercise/multiple-choice/${id}`)}
-      >
-        <Text style={styles.studyButtonText}>📝 Multiple Choice</Text>
-      </TouchableOpacity>
+      {/* Кнопки изучения - ТОЛЬКО для МОИХ словарей */}
+      {selectedVocabulary && selectedVocabulary.userId === user?.id && (
+        <>
+          <TouchableOpacity
+            style={styles.studyButton}
+            onPress={() => router.push(`/study/flashcards/${id}`)}
+          >
+            <Text style={styles.studyButtonText}>🎯 Начать изучение</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.studyButton, { backgroundColor: Colors.secondary }]}
+            onPress={() => router.push(`/exercise/multiple-choice/${id}`)}
+          >
+            <Text style={styles.studyButtonText}>📝 Multiple Choice</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
       {/* Words List */}
       <FlatList
         data={selectedVocabulary.words}

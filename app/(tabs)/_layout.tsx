@@ -1,7 +1,6 @@
 import { Colors } from "@/constants";
-import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
@@ -96,77 +95,28 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Словари",
-          tabBarIcon: ({ color, focused, size }) => {
-            // Разные иконки для платформ
-            let iconName: keyof typeof Ionicons.glyphMap;
-
-            if (isIOS) {
-              iconName = focused ? "book" : "book-outline";
-            } else {
-              iconName = focused ? "library" : "library-outline";
-            }
-
-            return <Ionicons name={iconName} size={iconSize} color={color} />;
-          },
-          // Android может показывать badge
-          tabBarBadge: undefined, // Можно добавить счетчик
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📚</Text>,
         }}
       />
-
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: "Библиотека",
-          tabBarIcon: ({ color, focused }) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
-
-            if (isIOS) {
-              iconName = focused ? "globe" : "globe-outline";
-            } else {
-              iconName = focused ? "earth" : "earth-outline";
-            }
-
-            return <Ionicons name={iconName} size={iconSize} color={color} />;
-          },
-        }}
-      />
-
       <Tabs.Screen
         name="study"
         options={{
           title: "Изучение",
-          tabBarIcon: ({ color, focused }) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
-
-            if (isIOS) {
-              iconName = focused ? "flame" : "flame-outline";
-            } else {
-              // Android использует более знакомую иконку школы
-              iconName = focused ? "school" : "school-outline";
-            }
-
-            return <Ionicons name={iconName} size={iconSize} color={color} />;
-          },
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🎯</Text>,
         }}
       />
-
+      <Tabs.Screen
+        name="progress"
+        options={{
+          title: "Прогресс",
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📊</Text>,
+        }}
+      />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Профиль",
-          tabBarIcon: ({ color, focused }) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
-
-            if (isIOS) {
-              // iOS использует круглую иконку профиля
-              iconName = focused ? "person-circle" : "person-circle-outline";
-            } else {
-              // Android использует простую иконку человека
-              iconName = focused ? "person" : "person-outline";
-            }
-
-            return <Ionicons name={iconName} size={iconSize} color={color} />;
-          },
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
         }}
       />
     </Tabs>

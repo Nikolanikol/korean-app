@@ -1,5 +1,5 @@
-import { Vocabulary, Word, VocabularyWithWords } from '@/types/vocabulary';
 import { WordProgress } from '@/types/study';
+import { Vocabulary, VocabularyWithWords, Word } from '@/types/vocabulary';
 
 export const mockWords: Word[] = [
   {
@@ -71,9 +71,33 @@ export const mockWords: Word[] = [
 ];
 
 export const mockVocabularies: Vocabulary[] = [
+  // ========================================
+  // МОИ СЛОВАРИ (userId: user-google-1)
+  // ========================================
+  {
+    id: 'vocab-my-1',
+    userId: 'user-google-1', // Это ID первого мок Google аккаунта
+    title: 'Мой словарь для путешествий',
+    description: 'Фразы которые я собрал для поездки в Корею',
+    language: 'ko',
+    difficultyLevel: 'beginner',
+    category: 'travel',
+    tags: ['personal', 'travel', 'practical'],
+    isPublic: false,
+    isOfficial: false,
+    wordCount: 12,
+    forkCount: 0,
+    studyCount: 45,
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+
+  // ========================================
+  // ПУБЛИЧНЫЕ СЛОВАРИ (от других пользователей)
+  // ========================================
   {
     id: 'vocab-1',
-    userId: 'user-1',
+    userId: 'user-official', // Официальный аккаунт
     title: 'Базовые фразы',
     description: 'Самые важные фразы для начинающих',
     language: 'ko',
@@ -90,7 +114,7 @@ export const mockVocabularies: Vocabulary[] = [
   },
   {
     id: 'vocab-2',
-    userId: 'user-1',
+    userId: 'user-community-1', // Пользователь сообщества
     title: 'Еда и напитки',
     description: 'Словарь для заказа в ресторане',
     language: 'ko',
@@ -107,7 +131,7 @@ export const mockVocabularies: Vocabulary[] = [
   },
   {
     id: 'vocab-3',
-    userId: 'user-1',
+    userId: 'user-official', // Официальный аккаунт
     title: 'TOPIK I - Базовая лексика',
     description: 'Слова для подготовки к TOPIK уровень I',
     language: 'ko',
@@ -120,6 +144,23 @@ export const mockVocabularies: Vocabulary[] = [
     forkCount: 1234,
     studyCount: 8920,
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'vocab-4',
+    userId: 'user-community-2', // Еще один пользователь
+    title: 'K-Drama сленг',
+    description: 'Популярные выражения из корейских дорам',
+    language: 'ko',
+    difficultyLevel: 'intermediate',
+    category: 'entertainment',
+    tags: ['kdrama', 'slang', 'fun'],
+    isPublic: true,
+    isOfficial: false,
+    wordCount: 45,
+    forkCount: 567,
+    studyCount: 2340,
+    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   },
 ];

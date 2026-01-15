@@ -1,7 +1,6 @@
 import { DailyGoalModal } from "@/components/modals/DailyGoalModal";
 import { GoogleAccountPicker } from "@/components/modals/GoogleAccountPicker";
 import { LanguageModal } from "@/components/modals/LanguageModal";
-import { ActivityBar } from "@/components/profile/ActivityBar";
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
 import { googleAccountToUser } from "@/mocks/auth.mock";
 import { useAuthStore } from "@/store/authStore";
@@ -138,35 +137,6 @@ export default function ProfileScreen() {
 
         <Text style={styles.username}>{user.username || "Пользователь"}</Text>
         <Text style={styles.email}>{user.email}</Text>
-      </View>
-
-      {/* Stats Grid */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, styles.statCardPrimary]}>
-            <Text style={styles.statValue}>{currentStreak}</Text>
-            <Text style={styles.statLabel}>Дней подряд 🔥</Text>
-          </View>
-          <View style={[styles.statCard, styles.statCardSecondary]}>
-            <Text style={styles.statValue}>{totalWordsLearned}</Text>
-            <Text style={styles.statLabel}>Слов изучено</Text>
-          </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, styles.statCardPurple]}>
-            <Text style={styles.statValue}>{vocabularies.length}</Text>
-            <Text style={styles.statLabel}>Словарей</Text>
-          </View>
-          <View style={[styles.statCard, styles.statCardOrange]}>
-            <Text style={styles.statValue}>{totalWords}</Text>
-            <Text style={styles.statLabel}>Всего слов</Text>
-          </View>
-        </View>
-      </View>
-      {/* Activity Bar */}
-      <View style={styles.section}>
-        <ActivityBar />
       </View>
 
       {/* Subscription */}
