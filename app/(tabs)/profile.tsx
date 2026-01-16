@@ -1,6 +1,7 @@
 import { DailyGoalModal } from "@/components/modals/DailyGoalModal";
 import { GoogleAccountPicker } from "@/components/modals/GoogleAccountPicker";
 import { LanguageModal } from "@/components/modals/LanguageModal";
+import { QuestionsPerRoundModal } from "@/components/modals/QuestionsPerRoundModal";
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
 import { googleAccountToUser } from "@/mocks/auth.mock";
 import { useAuthStore } from "@/store/authStore";
@@ -14,16 +15,20 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
-  TouchableOpacity,
+  TouchableOpacity, //
   View,
 } from "react-native";
 export default function ProfileScreen() {
+  const [showQuestionsModal, setShowQuestionsModal] = useState(false); // ⬅️ ДОБАВИЛИ
+
   const { user, logout, loginWithUser } = useAuthStore();
   const { vocabularies } = useVocabularyStore();
   const { totalWordsLearned, currentStreak, longestStreak } =
     useProgressStore();
-  const { settings } = useSettingsStore();
+  const { settings, toggleHaptics, toggleSound, setSoundTheme } =
+    useSettingsStore();
   // Состояния для модалок
   const [showDailyGoalModal, setShowDailyGoalModal] = useState(false);
   const [showInterfaceLanguageModal, setShowInterfaceLanguageModal] =
@@ -213,7 +218,91 @@ export default function ProfileScreen() {
               {settings.dailyGoal} новых слов в день
             </Text>
           </View>
+
           <Text style={styles.menuItemArrow}>›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setShowQuestionsModal(true)}
+        >
+          <View>
+            <Text style={styles.menuItemTitle}>Вопросов за раунд</Text>
+            <Text style={styles.menuItemSubtitle}>
+              {settings.questionsPerRound} вопросов в упражнении
+            </Text>
+          </View>
+          <Text style={styles.menuItemArrow}>›</Text>
+        </TouchableOpacity>
+        {/* Вибрация */}
+        <View style={styles.menuItem}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.menuItemTitle}>Вибрация</Text>
+            <Text style={styles.menuItemSubtitle}>
+              Тактильный отклик при ответах
+            </Text>
+          </View>
+          <Switch
+            value={settings.hapticsEnabled}
+            onValueChange={toggleHaptics}
+            trackColor={{ false: Colors.gray[300], true: Colors.primary }}
+            thumbColor={Colors.white}
+          />
+        </View>
+
+        {/* Звуки */}
+        <View style={styles.menuItem}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.menuItemTitle}>Звуки</Text>
+            <Text style={styles.menuItemSubtitle}>
+              Звуковые эффекты в упражнениях
+            </Text>
+          </View>
+          <Switch
+            value={settings.soundEnabled}
+            onValueChange={toggleSound}
+            trackColor={{ false: Colors.gray[300], true: Colors.primary }}
+            thumbColor={Colors.white}
+          />
+        </View>
+        {/* Тема звуков */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            // Переключаем тему
+            const newTheme =
+              settings.soundTheme === "classic" ? "gaming" : "classic";
+            setSoundTheme(newTheme);
+          }}
+          disabled={!settings.soundEnabled}
+        >
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[
+                styles.menuItemTitle,
+                !settings.soundEnabled && { color: Colors.gray[400] },
+              ]}
+            >
+              Тема звуков
+            </Text>
+            <Text
+              style={[
+                styles.menuItemSubtitle,
+                !settings.soundEnabled && { color: Colors.gray[400] },
+              ]}
+            >
+              {settings.soundTheme === "classic"
+                ? "🎵 Классические"
+                : "🎮 Игровые"}
+            </Text>
+          </View>
+          <Text
+            style={[
+              styles.menuItemArrow,
+              !settings.soundEnabled && { color: Colors.gray[400] },
+            ]}
+          >
+            {settings.soundTheme === "classic" ? "🎮" : "🎵"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -245,6 +334,10 @@ export default function ProfileScreen() {
         visible={showLearningLanguageModal}
         onClose={() => setShowLearningLanguageModal(false)}
         type="learning"
+      />
+      <QuestionsPerRoundModal
+        visible={showQuestionsModal}
+        onClose={() => setShowQuestionsModal(false)}
       />
       <GoogleAccountPicker
         visible={showGooglePicker}

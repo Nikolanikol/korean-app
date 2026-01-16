@@ -1,5 +1,9 @@
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
+import { useHaptics } from "@/hooks/useHaptics";
+import { useSounds } from "@/hooks/useSounds";
+import { useTTS } from "@/hooks/useTTS";
 import { useProgressStore } from "@/store/progressStore";
+import { useSettingsStore } from "@/store/settingsStore"; // ⬅️ ДОБАВИЛИ
 import { useVocabularyStore } from "@/store/vocabularyStore";
 import { MultipleChoiceQuestion } from "@/types/exercise";
 import { commonStyles } from "@/utils/commonStyles";
@@ -13,7 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
+import { SafeAreaView } from "react-native-safe-area-context"; // ⬅️ ДОБАВИЛИ
 export default function MultipleChoiceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -21,6 +25,14 @@ export default function MultipleChoiceScreen() {
   const { selectedVocabulary, fetchVocabularyById } = useVocabularyStore();
   const { getDueWords, getNewWords, updateWordProgress, recordActivity } =
     useProgressStore();
+  const { playSuccess, playError, playLight } = useHaptics();
+  const { speakKorean } = useTTS();
+  const {
+    playSuccess: playSoundSuccess,
+    playComplete: playSoundComplete,
+    playError: playSoundError,
+  } = useSounds();
+  const { settings } = useSettingsStore(); // ⬅️ ДОБАВИЛИ
 
   const [questions, setQuestions] = useState<MultipleChoiceQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -53,7 +65,6 @@ export default function MultipleChoiceScreen() {
     const dueWords = getDueWords(id);
     const newWords = getNewWords(id!, selectedVocabulary.words, 5);
 
-    // Комбинируем слова для повторения + новые слова
     const wordsToStudy = [
       ...dueWords.map((wp) =>
         selectedVocabulary.words.find((w) => w.id === wp.wordId)
@@ -61,13 +72,13 @@ export default function MultipleChoiceScreen() {
       ...newWords,
     ]
       .filter(Boolean)
-      .slice(0, 10); // Максимум 10 вопросов
+      .slice(0, settings.questionsPerRound); // ⬅️ ИСПОЛЬЗУЕМ НАСТРОЙКУ
 
     if (wordsToStudy.length === 0) {
       // Если нет слов на повторение, берем случайные
       const randomWords = selectedVocabulary.words
         .sort(() => Math.random() - 0.5)
-        .slice(0, 10);
+        .slice(0, settings.questionsPerRound);
 
       const generatedQuestions = randomWords.map((word) =>
         generateQuestion(word!, selectedVocabulary.words)
@@ -124,8 +135,17 @@ export default function MultipleChoiceScreen() {
     const isCorrect = answer === questions[currentIndex].correctAnswer;
 
     if (isCorrect) {
+      // ✅ Вибрация и звук успеха
+      playSuccess();
+      playSoundSuccess();
+      // 🔊 Произносим корейское слово
+      speakKorean(questions[currentIndex].word.korean);
+
       setCorrectCount(correctCount + 1);
     } else {
+      // ❌ Вибрация и звук ошибки
+      playError();
+      playSoundError();
       setIncorrectCount(incorrectCount + 1);
     }
 
@@ -135,17 +155,32 @@ export default function MultipleChoiceScreen() {
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
+      // 💫 Легкая вибрация при переходе
+      playLight();
       setCurrentIndex(currentIndex + 1);
       setSelectedAnswer(null);
       setShowResult(false);
     } else {
-      // Завершаем упражнение
-      recordActivity(
-        questions.length,
+      // Подсчитываем финальный результат
+      const finalCorrect =
         correctCount +
-          (selectedAnswer === questions[currentIndex].correctAnswer ? 1 : 0),
-        questions.length
-      );
+        (selectedAnswer === questions[currentIndex].correctAnswer ? 1 : 0);
+      const finalIncorrect =
+        incorrectCount +
+        (selectedAnswer !== questions[currentIndex].correctAnswer ? 1 : 0);
+
+      // Проверяем: есть ли ошибки?
+      if (finalIncorrect === 0) {
+        // 🎉 ИДЕАЛЬНО! Все правильно!
+        playSuccess(); // Вибрация
+        playSoundComplete(); // FLAWLESS VICTORY! 🔥
+      } else {
+        // Есть ошибки - без звука успеха
+        playLight(); // Просто легкая вибрация
+      }
+
+      // Завершаем упражнение
+      recordActivity(questions.length, finalCorrect, questions.length);
       router.back();
     }
   };
@@ -176,7 +211,7 @@ export default function MultipleChoiceScreen() {
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
-    <View style={commonStyles.container}>
+    <SafeAreaView style={commonStyles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -267,7 +302,7 @@ export default function MultipleChoiceScreen() {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -276,7 +311,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs, // ⬅️ Очень маленький отступ
+    paddingBottom: Spacing.sm, // ⬅️ Уменьшили
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.gray[200],
@@ -323,16 +360,18 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.semibold,
   },
   content: {
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md, // ⬅️ ДОБАВИЛИ
+    paddingBottom: Spacing.xxxl,
   },
   questionCard: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.xxxl,
-    marginBottom: Spacing.xl,
-    alignItems: "center",
+    padding: Spacing.xxl, // ⬅️ Увеличили (было xl)
+    marginBottom: Spacing.lg, // ⬅️ Уменьшили (было xl)
     borderWidth: 1,
     borderColor: Colors.gray[200],
+    minHeight: 180,
   },
   questionLabel: {
     fontSize: Typography.fontSize.sm,
@@ -340,10 +379,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   questionText: {
-    fontSize: Typography.fontSize["4xl"],
+    fontSize: Typography.fontSize["3xl"], // ⬅️ Увеличили (было 2xl)
     fontWeight: Typography.fontWeight.bold,
     color: Colors.text.primary,
     textAlign: "center",
+    marginTop: Spacing.md,
   },
   romanization: {
     fontSize: Typography.fontSize.lg,
@@ -351,7 +391,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   optionsContainer: {
-    gap: Spacing.md,
+    gap: Spacing.sm, // ⬅️ Уменьшили (было md)
   },
   option: {
     backgroundColor: Colors.white,

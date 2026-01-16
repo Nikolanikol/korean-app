@@ -3,8 +3,10 @@ import { useAuthStore } from "@/store/authStore";
 import { useVocabularyStore } from "@/store/vocabularyStore";
 import { DifficultyLevel } from "@/types/vocabulary";
 import { commonStyles } from "@/utils/commonStyles";
+import { zodResolver } from "@hookform/resolvers/zod"; // ⬅️ ДОБАВИЛИ
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form"; // ⬅️ ДОБАВИЛИ
 import {
   Alert,
   ScrollView,
@@ -14,27 +16,69 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as z from "zod";
+// ⬇️ ДОБАВЛЯЕМ СХЕМУ ВАЛИДАЦИИ
+const vocabularySchema = z.object({
+  title: z.string().min(1, "Название обязательно").min(3, "Минимум 3 символа"),
+  description: z
+    .string()
+    .min(1, "Описание обязательно")
+    .min(10, "Минимум 10 символов"),
+  category: z.string().min(1, "Категория обязательна"),
+  tags: z
+    .string()
+    .min(1, "Добавьте хотя бы один тег")
+    .transform((val) => {
+      // Стандартизация тегов
+      return val
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter((tag) => tag.length > 0)
+        .filter((tag, index, self) => self.indexOf(tag) === index)
+        .join(", ");
+    }),
+});
+type VocabularyFormData = z.infer<typeof vocabularySchema>;
 
 export default function CreateVocabularyScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { createVocabulary, isLoading } = useVocabularyStore();
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    watch,
+  } = useForm<VocabularyFormData>({
+    resolver: zodResolver(vocabularySchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      tags: "",
+    },
+  });
+
+  // Остальные состояния (не входят в форму)
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("beginner");
-  const [isPublic, setIsPublic] = useState(false);
-  const [tags, setTags] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
+
+  // Watch для preview тегов
+  const tagsValue = watch("tags");
 
   // Состояние для списка слов
   const [words, setWords] = useState<
     Array<{
+      id: string;
       korean: string;
       translation: string;
       romanization?: string;
       exampleSentence?: string;
       exampleTranslation?: string;
+      tags: string[];
+      partOfSpeech?: string;
     }>
   >([]);
 
@@ -42,7 +86,7 @@ export default function CreateVocabularyScreen() {
   const [newWord, setNewWord] = useState({
     korean: "",
     translation: "",
-    romanization: "",
+
     exampleSentence: "",
     exampleTranslation: "",
   });
@@ -61,7 +105,7 @@ export default function CreateVocabularyScreen() {
         id: `word-${Date.now()}-${words.length}`, // ⬅️ Уникальный ID!
         korean: newWord.korean.trim(),
         translation: newWord.translation.trim(),
-        romanization: newWord.romanization.trim() || undefined,
+
         exampleSentence: newWord.exampleSentence.trim() || undefined,
         exampleTranslation: newWord.exampleTranslation.trim() || undefined,
         tags: [],
@@ -73,7 +117,7 @@ export default function CreateVocabularyScreen() {
     setNewWord({
       korean: "",
       translation: "",
-      romanization: "",
+
       exampleSentence: "",
       exampleTranslation: "",
     });
@@ -85,9 +129,10 @@ export default function CreateVocabularyScreen() {
   const handleRemoveWord = (index: number) => {
     setWords(words.filter((_, i) => i !== index));
   };
-  const handleCreate = async () => {
-    if (!title.trim()) {
-      Alert.alert("Ошибка", "Название обязательно");
+  const onSubmit = async (data: VocabularyFormData) => {
+    // Проверяем наличие слов
+    if (words.length === 0) {
+      Alert.alert("Ошибка", "Добавьте хотя бы одно слово");
       return;
     }
 
@@ -97,23 +142,26 @@ export default function CreateVocabularyScreen() {
     }
 
     try {
+      // Парсим стандартизированные теги
+      const parsedTags = data.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+
       await createVocabulary({
         userId: user.id,
-        title: title.trim(),
-        description: description.trim() || undefined,
+        title: data.title,
+        description: data.description,
         language: "ko",
         difficultyLevel: difficulty,
-        category: category.trim() || undefined,
-        tags: tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
+        category: data.category,
+        tags: parsedTags,
         isPublic,
         isOfficial: false,
-        wordCount: words.length, // ⬅️ Реальное количество!
+        wordCount: words.length,
         forkCount: 0,
         studyCount: 0,
-        words: words, // ⬅️ ДОБАВИЛИ СЛОВА!
+        words: words,
       });
 
       Alert.alert("Успех", "Словарь создан!", [
@@ -149,28 +197,52 @@ export default function CreateVocabularyScreen() {
         {/* Название */}
         <View style={styles.field}>
           <Text style={styles.label}>Название словаря *</Text>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Например: Базовые фразы"
-            style={commonStyles.input}
-            placeholderTextColor={Colors.gray[400]}
+          <Controller
+            control={control}
+            name="title"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                placeholder="Например: Базовые фразы"
+                style={[commonStyles.input, errors.title && styles.inputError]}
+                placeholderTextColor={Colors.gray[400]}
+              />
+            )}
           />
+          {errors.title && (
+            <Text style={styles.errorText}>{errors.title.message}</Text>
+          )}
         </View>
 
         {/* Описание */}
         <View style={styles.field}>
-          <Text style={styles.label}>Описание</Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Краткое описание словаря..."
-            multiline
-            numberOfLines={3}
-            style={[commonStyles.input, styles.textArea]}
-            placeholderTextColor={Colors.gray[400]}
-            textAlignVertical="top"
+          <Text style={styles.label}>Описание *</Text>
+          <Controller
+            control={control}
+            name="description"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                placeholder="Краткое описание словаря..."
+                multiline
+                numberOfLines={3}
+                style={[
+                  commonStyles.input,
+                  styles.textArea,
+                  errors.description && styles.inputError,
+                ]}
+                placeholderTextColor={Colors.gray[400]}
+                textAlignVertical="top"
+              />
+            )}
           />
+          {errors.description && (
+            <Text style={styles.errorText}>{errors.description.message}</Text>
+          )}
         </View>
 
         {/* Уровень сложности */}
@@ -201,26 +273,65 @@ export default function CreateVocabularyScreen() {
 
         {/* Категория */}
         <View style={styles.field}>
-          <Text style={styles.label}>Категория</Text>
-          <TextInput
-            value={category}
-            onChangeText={setCategory}
-            placeholder="Например: еда, путешествия, бизнес"
-            style={commonStyles.input}
-            placeholderTextColor={Colors.gray[400]}
+          <Text style={styles.label}>Категория *</Text>
+          <Controller
+            control={control}
+            name="category"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                placeholder="Например: еда, путешествия, бизнес"
+                style={[
+                  commonStyles.input,
+                  errors.category && styles.inputError,
+                ]}
+                placeholderTextColor={Colors.gray[400]}
+              />
+            )}
           />
+          {errors.category && (
+            <Text style={styles.errorText}>{errors.category.message}</Text>
+          )}
         </View>
 
         {/* Теги */}
         <View style={styles.field}>
-          <Text style={styles.label}>Теги (через запятую)</Text>
-          <TextInput
-            value={tags}
-            onChangeText={setTags}
-            placeholder="topik, грамматика, разговорный"
-            style={commonStyles.input}
-            placeholderTextColor={Colors.gray[400]}
+          <Text style={styles.label}>Теги (через запятую) *</Text>
+          <Controller
+            control={control}
+            name="tags"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                placeholder="topik, грамматика, разговорный"
+                style={[commonStyles.input, errors.tags && styles.inputError]}
+                placeholderTextColor={Colors.gray[400]}
+              />
+            )}
           />
+          {errors.tags && (
+            <Text style={styles.errorText}>{errors.tags.message}</Text>
+          )}
+          {tagsValue && tagsValue.trim() && (
+            <View style={styles.tagsPreview}>
+              <Text style={styles.tagsPreviewLabel}>Будут сохранены как:</Text>
+              <View style={styles.tagsPreviewContainer}>
+                {tagsValue
+                  .split(",")
+                  .map((t) => t.trim().toLowerCase())
+                  .filter(Boolean)
+                  .map((tag, index) => (
+                    <View key={index} style={styles.tagChip}>
+                      <Text style={styles.tagChipText}>{tag}</Text>
+                    </View>
+                  ))}
+              </View>
+            </View>
+          )}
         </View>
         {/* Список добавленных слов */}
         {words.length > 0 && (
@@ -277,17 +388,6 @@ export default function CreateVocabularyScreen() {
               placeholderTextColor={Colors.gray[400]}
             />
 
-            <Text style={styles.label}>Романизация</Text>
-            <TextInput
-              style={styles.input}
-              value={newWord.romanization}
-              onChangeText={(text) =>
-                setNewWord({ ...newWord, romanization: text })
-              }
-              placeholder="annyeonghaseyo"
-              placeholderTextColor={Colors.gray[400]}
-            />
-
             <TouchableOpacity
               style={styles.addWordButton}
               onPress={handleAddWord}
@@ -316,7 +416,7 @@ export default function CreateVocabularyScreen() {
 
         {/* Кнопка создания */}
         <TouchableOpacity
-          onPress={handleCreate}
+          onPress={handleSubmit(onSubmit)}
           disabled={isLoading}
           style={[
             styles.createButton,
@@ -526,5 +626,42 @@ const styles = StyleSheet.create({
   },
   removeButtonText: {
     fontSize: 20,
+  },
+  inputError: {
+    borderColor: Colors.red[500],
+    borderWidth: 2,
+  },
+  errorText: {
+    color: Colors.red[500],
+    fontSize: Typography.fontSize.xs,
+    marginTop: Spacing.xs,
+  },
+  tagsPreview: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    backgroundColor: Colors.gray[50],
+    borderRadius: BorderRadius.md,
+  },
+  tagsPreviewLabel: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.sm,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  tagsPreviewContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+  },
+  tagChip: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  tagChipText: {
+    color: Colors.white,
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
   },
 });

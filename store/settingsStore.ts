@@ -14,7 +14,10 @@ interface SettingsStore {
   toggleSound: () => void;
   toggleHaptics: () => void;
   toggleRomanization: () => void;
+    setSoundTheme: (theme: 'classic' | 'gaming') => void;  // ⬅️ ДОБАВИЛИ
+
   resetSettings: () => void;
+  setQuestionsPerRound: (count: number) => void;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -27,6 +30,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   hapticsEnabled: true,
   showRomanization: true,
+    soundTheme: 'classic',  // ⬅️ ДОБАВИЛИ (по умолчанию классические)
+    questionsPerRound: 10,
+
+  
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -84,6 +91,19 @@ export const useSettingsStore = create<SettingsStore>()(
           }
         }));
       },
+       setQuestionsPerRound: (count) => set(state => ({
+    settings: {
+      ...state.settings,
+      questionsPerRound: count
+    }
+  })),
+
+  setSoundTheme: (theme) => set(state => ({
+    settings: {
+      ...state.settings,
+      soundTheme: theme
+    }
+  })),
 
       resetSettings: () => {
         set({ settings: DEFAULT_SETTINGS });

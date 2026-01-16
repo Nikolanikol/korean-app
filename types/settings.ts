@@ -20,4 +20,7 @@ export interface AppSettings {
   
   // Прочее
   showRomanization: boolean;
+    soundTheme: 'classic' | 'gaming';  // ⬅️ ДОБАВИЛИ
+    questionsPerRound: number;  
+
 }
