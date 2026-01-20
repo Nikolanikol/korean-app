@@ -4,9 +4,11 @@ import { useVocabularyStore } from "@/store/vocabularyStore";
 import { DifficultyLevel } from "@/types/vocabulary";
 import { commonStyles } from "@/utils/commonStyles";
 import { zodResolver } from "@hookform/resolvers/zod"; // ⬅️ ДОБАВИЛИ
+import * as Crypto from "expo-crypto"; // ⬅️ ДОБАВИЛИ!
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form"; // ⬅️ ДОБАВИЛИ
+
 import {
   Alert,
   ScrollView,
@@ -102,7 +104,7 @@ export default function CreateVocabularyScreen() {
     setWords([
       ...words,
       {
-        id: `word-${Date.now()}-${words.length}`, // ⬅️ Уникальный ID!
+        id: Crypto.randomUUID(), // ⬅️ ИЗМЕНИЛИ: теперь UUID!
         korean: newWord.korean.trim(),
         translation: newWord.translation.trim(),
 
@@ -417,22 +419,42 @@ export default function CreateVocabularyScreen() {
         {/* Кнопка создания */}
         <TouchableOpacity
           onPress={handleSubmit(onSubmit)}
-          disabled={isLoading}
+          disabled={isLoading || words.length === 0} // ⬅️ ДОБАВИЛИ проверку
           style={[
             styles.createButton,
-            isLoading && styles.createButtonDisabled,
+            (isLoading || words.length === 0) && styles.createButtonDisabled, // ⬅️ ИЗМЕНИЛИ
           ]}
         >
           <Text style={styles.createButtonText}>
             {isLoading ? "Создание..." : "Создать словарь"}
           </Text>
         </TouchableOpacity>
+        {words.length === 0 && (
+          <View style={styles.emptyWordsHint}>
+            <Text style={styles.emptyWordsHintText}>
+              💡 Добавьте хотя бы одно слово для создания словаря
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  emptyWordsHint: {
+    backgroundColor: Colors.yellow[50],
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.yellow[200],
+  },
+  emptyWordsHintText: {
+    color: Colors.yellow[800],
+    fontSize: Typography.fontSize.sm,
+    textAlign: "center",
+  },
   header: {
     backgroundColor: Colors.primary,
     paddingTop: 48,

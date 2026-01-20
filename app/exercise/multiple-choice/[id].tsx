@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/ui/EmptyState";
 import { BorderRadius, Colors, Spacing, Typography } from "@/constants";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSounds } from "@/hooks/useSounds";
@@ -10,7 +11,6 @@ import { commonStyles } from "@/utils/commonStyles";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -41,6 +41,7 @@ export default function MultipleChoiceScreen() {
   const [correctCount, setCorrectCount] = useState(0);
   const [incorrectCount, setIncorrectCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false); // ⬅️ ДОБАВИЛИ
 
   useEffect(() => {
     if (id) {
@@ -154,12 +155,17 @@ export default function MultipleChoiceScreen() {
   };
 
   const handleNext = () => {
+    // 🛡️ Защита от двойных кликов
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+
     if (currentIndex < questions.length - 1) {
       // 💫 Легкая вибрация при переходе
       playLight();
       setCurrentIndex(currentIndex + 1);
       setSelectedAnswer(null);
       setShowResult(false);
+      setIsTransitioning(false); // ⬅️ Разблокируем для следующего клика
     } else {
       // Подсчитываем финальный результат
       const finalCorrect =
@@ -172,44 +178,70 @@ export default function MultipleChoiceScreen() {
       // Проверяем: есть ли ошибки?
       if (finalIncorrect === 0) {
         // 🎉 ИДЕАЛЬНО! Все правильно!
-        playSuccess(); // Вибрация
-        playSoundComplete(); // FLAWLESS VICTORY! 🔥
+        playSuccess();
+        playSoundComplete();
       } else {
         // Есть ошибки - без звука успеха
-        playLight(); // Просто легкая вибрация
+        playLight();
       }
 
       // Завершаем упражнение
       recordActivity(questions.length, finalCorrect, questions.length);
-      router.back();
+
+      // Задержка чтобы услышать звук
+      setTimeout(() => {
+        setIsTransitioning(false); // ⬅️ Разблокируем на всякий случай
+        router.back();
+      }, 2000);
     }
   };
 
+  const currentQuestion = questions[currentIndex];
+  const progress = ((currentIndex + 1) / questions.length) * 100;
   if (isLoading) {
     return (
-      <View style={[commonStyles.container, commonStyles.centered]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
+      <SafeAreaView style={commonStyles.container}>
+        <EmptyState
+          icon="⏳"
+          title="Загрузка..."
+          description="Подготавливаем вопросы для вас"
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // ⬇️ ДОБАВЛЯЕМ: Проверка на пустой словарь
+  if (
+    !selectedVocabulary ||
+    !selectedVocabulary.words ||
+    selectedVocabulary.words.length === 0
+  ) {
+    return (
+      <SafeAreaView style={commonStyles.container}>
+        <EmptyState
+          icon="📚"
+          title="Словарь пуст"
+          description="В этом словаре пока нет слов для изучения. Добавьте слова, чтобы начать!"
+          actionText="Вернуться назад"
+          onAction={() => router.back()}
+        />
+      </SafeAreaView>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <View style={[commonStyles.container, commonStyles.centered]}>
-        <Text style={styles.emptyText}>Нет слов для изучения</Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backButtonText}>← Назад</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={commonStyles.container}>
+        <EmptyState
+          icon="🎉"
+          title="Все слова изучены!"
+          description="Поздравляем! Вы изучили все слова из этого словаря."
+          actionText="Вернуться назад"
+          onAction={() => router.back()}
+        />
+      </SafeAreaView>
     );
   }
-
-  const currentQuestion = questions[currentIndex];
-  const progress = ((currentIndex + 1) / questions.length) * 100;
-
   return (
     <SafeAreaView style={commonStyles.container}>
       {/* Header */}
@@ -307,6 +339,15 @@ export default function MultipleChoiceScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: Typography.fontSize.lg,
+    color: Colors.text.secondary,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

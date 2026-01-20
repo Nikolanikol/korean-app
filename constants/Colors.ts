@@ -42,6 +42,9 @@ export const Colors = {
   yellow: {
     50: '#FEFCE8',
     100: '#FEF9C3',
+    200: '#FCE96A',
+    300: '#FADB15',
+    400: '#FBBF24',
     500: '#EAB308',
     600: '#CA8A04',
     800: '#854D0E',

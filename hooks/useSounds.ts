@@ -14,22 +14,13 @@ export const useSounds = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    loadSounds();
-    
-    return () => {
-      // Очистка при размонтировании
-      Object.values(sounds).forEach(sound => {
-        sound?.unloadAsync();
-      });
-    };
-  }, [settings.soundTheme]); // Перезагружаем при смене темы
-
+  let isMounted = true;
+  let currentSounds: SoundSet = {};
+  
   const loadSounds = async () => {
     try {
-      // Выбираем папку в зависимости от темы
       const soundPath = settings.soundTheme === 'gaming' ? 'gaming' : 'classic';
       
-      // Загружаем звуки
       const { sound: successSound } = await Audio.Sound.createAsync(
         soundPath === 'gaming' 
           ? require('@/assets/sounds/gaming/success.mp3')
@@ -48,17 +39,38 @@ export const useSounds = () => {
           : require('@/assets/sounds/classic/error.mp3')
       );
       
-      setSounds({
+      // Сохраняем ссылки в локальную переменную
+      currentSounds = {
         success: successSound,
         complete: completeSound,
         error: errorSound,
-      });
+      };
       
-      setIsLoaded(true);
+      if (isMounted) {
+        setSounds(currentSounds);
+        setIsLoaded(true);
+      }
     } catch (error) {
       console.error('Error loading sounds:', error);
     }
   };
+  
+  loadSounds();
+  
+  // Cleanup
+  return () => {
+    isMounted = false;
+    // Выгружаем ЛОКАЛЬНЫЕ звуки, а не из state
+    Object.values(currentSounds).forEach(sound => {
+      sound?.unloadAsync().catch((err: unknown) => 
+        console.log('Error unloading sound:', err)
+      );
+    });
+  };
+}, [settings.soundTheme]);
+
+
+
 
   const playSound = async (type: 'success' | 'complete' | 'error') => {
     // Проверяем что звуки включены

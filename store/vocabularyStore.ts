@@ -1,6 +1,7 @@
 import { mockVocabularies, mockVocabulariesWithWords } from '@/mocks/vocabularies.mock';
 import { Vocabulary, VocabularyWithWords } from '@/types/vocabulary';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto'; // ⬅️ ДОБАВИЛИ
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
@@ -23,6 +24,10 @@ interface VocabularyStore {
   clearError: () => void;
 }
 
+const generateId = (prefix: string = 'id'): string => {
+  return `${prefix}-${Crypto.randomUUID()}`;
+};
+
 export const useVocabularyStore = create<VocabularyStore>()(
   persist(
     (set, get) => ({
@@ -36,25 +41,32 @@ export const useVocabularyStore = create<VocabularyStore>()(
 
   fetchVocabularies: async () => {
   set({ isLoading: true, error: null });
-     // Получаем РЕАЛЬНОГО текущего пользователя
-    const currentUser = useAuthStore.getState().user;
-    const userId = currentUser?.id || 'user-google-1';
+  const currentUser = useAuthStore.getState().user;
+  const userId = currentUser?.id || 'user-google-1';
   try {
-    // Симуляция API запроса
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Получаем текущего пользователя из authStore
-    // В будущем это будет приходить из API
-
+    // Получаем текущие сохраненные словари
+    const currentVocabs = get().vocabularies;
     
-    // Фильтруем только МОИ словари
-    const myVocabularies = mockVocabularies.filter(v => v.userId === userId);
+    // Берем моки для текущего пользователя
+    const mocksForUser = mockVocabularies.filter(v => v.userId === userId);
     
-    set({ vocabularies: myVocabularies, isLoading: false });
+    // Берем ID моков чтобы не дублировать
+    const mockIds = new Set(mocksForUser.map(v => v.id));
+    
+    // Берем только СВОИ созданные словари (не из моков)
+    const myCreatedVocabs = currentVocabs.filter(v => !mockIds.has(v.id));
+    
+    // ⬇️ ОБЪЕДИНЯЕМ: моки + созданные
+    const allVocabularies = [...mocksForUser, ...myCreatedVocabs];
+    
+    set({ vocabularies: allVocabularies, isLoading: false });
   } catch (error) {
     set({ error: 'Failed to fetch vocabularies', isLoading: false });
   }
 },
+
 
 
 fetchVocabularyById: async (id: string) => {
@@ -84,7 +96,8 @@ createVocabulary: async (vocab) => {
     
     const newVocab: Vocabulary = {
       ...vocabData,
-      id: `vocab-${Date.now()}`,
+            id: generateId('vocab'), // ⬅️ ИЗМЕНИЛИ
+
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -150,10 +163,12 @@ createVocabulary: async (vocab) => {
         throw new Error('Vocabulary not found');
       }
       
+                const newVocabId = generateId('vocab'); // ⬅️ ИЗМЕНИЛИ
+
       // Создаем копию словаря
       const forkedVocab: VocabularyWithWords = {
         ...original,
-        id: `vocab-fork-${Date.now()}`,
+            id: newVocabId,
         userId: userId,
         title: `${original.title} (копия)`,
         isPublic: false,
@@ -163,11 +178,11 @@ createVocabulary: async (vocab) => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         // Копируем слова с новыми ID
-        words: original.words.map((word, index) => ({
-          ...word,
-          id: `word-fork-${Date.now()}-${index}`,
-          vocabularyId: `vocab-fork-${Date.now()}`,
-        })),
+          words: original.words.map((word) => ({
+              ...word,
+              id: generateId('word'),
+              vocabularyId: newVocabId,
+            })),
       };
       
       // Создаем базовую версию без слов для списка словарей
